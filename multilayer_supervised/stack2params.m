@@ -7,9 +7,9 @@ function [params] = stack2params(stack)
 % [params, netconfig] = stack2params(stack)
 %
 % stack - the stack structure, where stack{1}.w = weights of first layer
-%                                    stack{1}.b = weights of first layer
+%                                    stack{1}.b = bias of first layer
 %                                    stack{2}.w = weights of second layer
-%                                    stack{2}.b = weights of second layer
+%                                    stack{2}.b = bias of second layer
 %                                    ... etc.
 % This is a non-standard version of the code to support conv nets
 % it allows higher layers to have window sizes >= 1 of the previous layer
