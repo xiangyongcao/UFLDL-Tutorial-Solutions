@@ -18,17 +18,18 @@ gradStack = cell(numHidden+1, 1);
 
 %% forward prop
 %%% YOUR CODE HERE %%%
+% hAct{i} corresponding to a^{i+1}, i = 1, 2, 3
 for l = 1:length(hAct)
-   if l == 1 
-       hAct{l} = actfunc(bsxfun(@plus, stack{l}.W * data, stack{l}.b), ei.activation_fun);
-   elseif l == length(hAct)
-       temp = bsxfun(@plus, stack{l}.W * hAct{l - 1}, stack{l}.b);
-       M = exp(bsxfun(@minus,temp,max(temp,[],1)));
-       hAct{end} = bsxfun(@rdivide, M, sum(M));
-       clear temp M;
-   else
-       hAct{l} = actfunc(bsxfun(@plus, stack{l}.W * hAct{l - 1}, stack{l}.b), ei.activation_fun);
-   end
+    if l == 1
+        hAct{l} = actfunc(bsxfun(@plus, stack{l}.W * data, stack{l}.b), ei.activation_fun);
+    elseif l == length(hAct)
+        temp = bsxfun(@plus, stack{l}.W * hAct{l - 1}, stack{l}.b);
+        M = exp(bsxfun(@minus,temp,max(temp,[],1)));
+        hAct{end} = bsxfun(@rdivide, M, sum(M));
+        clear temp M;
+    else
+        hAct{l} = actfunc(bsxfun(@plus, stack{l}.W * hAct{l - 1}, stack{l}.b), ei.activation_fun);
+    end
 end
 
 pred_prob = hAct{end};
@@ -47,16 +48,16 @@ groundTruth = full(sparse(labels, 1:m, 1));
 ceCost = -sum(sum(groundTruth .* log(pred_prob))) / m; % cross entropy cost
 
 %% compute gradients using backpropagation
-%%% YOUR CODE HERE %%%
+%%% YOUR CODE HERE %%%  % Delta{i} corresponding to delta(i+1)
 Delta = cell(numHidden+1, 1);
 for i = length(Delta):-1:1
-   if i == length(Delta)
-      Delta{i} = -(groundTruth - pred_prob); 
-   elseif i == 1
-       Delta{i} = (stack{i+1}.W' * Delta{i+1}).* deriv(bsxfun(@plus,stack{i}.W * data, stack{i}.b),ei.activation_fun);
-   else
-       Delta{i} = (stack{i+1}.W' * Delta{i+1}).* deriv(bsxfun(@plus,stack{i}.W * hAct{i-1}, stack{i}.b),ei.activation_fun);
-   end
+    if i == length(Delta)
+        Delta{i} = -(groundTruth - pred_prob);
+    elseif i == 1
+        Delta{i} = (stack{i+1}.W' * Delta{i+1}).* deriv(bsxfun(@plus,stack{i}.W * data, stack{i}.b),ei.activation_fun);
+    else
+        Delta{i} = (stack{i+1}.W' * Delta{i+1}).* deriv(bsxfun(@plus,stack{i}.W * hAct{i-1}, stack{i}.b),ei.activation_fun);
+    end
 end
 
 %% compute weight penalty cost and gradient for non-bias terms
@@ -74,7 +75,11 @@ for i = 1:length(gradStack)
         gradStack{i}.b = sum(Delta{i}, 2) / m;
     else
         gradStack{i}.W = Delta{i} * hAct{i - 1}' / m + ei.lambda * stack{i}.W;
-        gradStack{i}.b = sum(Delta{i}, 2) / m;
+        if i < length(gradStack)
+            gradStack{i}.b = sum(Delta{i}, 2) / m;
+        else
+            gradStack{i}.b = zeros(size(Delta{i},1),1);
+        end
     end
 end
 
