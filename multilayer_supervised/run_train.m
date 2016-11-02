@@ -40,12 +40,14 @@ params(end-10+1:end) = zeros(1,ei.output_dim);
 options = [];
 options.display = 'iter';
 options.maxFunEvals = 1e6;
-options.MaxIter = 100;
+options.MaxIter = 200;
 options.Method = 'lbfgs';
 
 %% run training
 [opt_params,opt_value,exitflag,output] = minFunc(@supervised_dnn_cost,...
     params,options,ei, data_train, labels_train);
+
+% average_error = grad_check(@supervised_dnn_cost, opt_params, 10, ei,data_train, labels_train);
 
 %% compute accuracy on the test and train set
 [~, ~, pred] = supervised_dnn_cost( opt_params, ei, data_test, [], true);
