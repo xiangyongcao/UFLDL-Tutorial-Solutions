@@ -40,7 +40,7 @@ params(end-10+1:end) = zeros(1,ei.output_dim);
 options = [];
 options.display = 'iter';
 options.maxFunEvals = 1e6;
-options.MaxIter = 200;
+% options.MaxIter = 200;
 options.Method = 'lbfgs';
 
 %% run training

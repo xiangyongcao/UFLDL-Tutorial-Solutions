@@ -27,9 +27,16 @@ pooledFeatures = zeros(convolvedDim / poolDim, ...
 %   value of the featureNum feature for the imageNum image pooled over the
 %   corresponding (poolRow, poolCol) pooling region. 
 %   
+
 %   Use mean pooling here.
-
-%%% YOUR CODE HERE %%%
-
+filter = ones(poolDim,poolDim)./(poolDim^2);
+for imageNum = 1:numImages
+  for filterNum = 1:numFilters
+    convolvedFeature = convolvedFeatures(:, :, filterNum,imageNum);
+    pooledFeature = conv2(convolvedFeature,filter,'valid');
+    pooledFeature = pooledFeature(1:poolDim:end,1:poolDim:end);
+    pooledFeatures(:, :, filterNum, imageNum) = pooledFeature;
+  end
 end
+
 

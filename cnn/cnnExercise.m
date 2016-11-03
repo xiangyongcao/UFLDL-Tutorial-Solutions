@@ -39,7 +39,8 @@ b = rand(numFilters);
 %  Implement convolution in the function cnnConvolve in cnnConvolve.m
 
 %% Use only the first 8 images for testing
-convImages = images(:, :, 1:8); 
+num = 100;
+convImages = images(:, :, 1:num); 
 
 % NOTE: Implement cnnConvolve in cnnConvolve.m first!
 convolvedFeatures = cnnConvolve(filterDim, numFilters, convImages, W, b);
@@ -52,7 +53,7 @@ convolvedFeatures = cnnConvolve(filterDim, numFilters, convImages, W, b);
 % For 1000 random points
 for i = 1:1000   
     filterNum = randi([1, numFilters]);
-    imageNum = randi([1, 8]);
+    imageNum = randi([1, num]);
     imageRow = randi([1, imageDim - filterDim + 1]);
     imageCol = randi([1, imageDim - filterDim + 1]);    
    
