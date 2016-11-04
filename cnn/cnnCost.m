@@ -1,15 +1,15 @@
 function [cost, grad, preds] = cnnCost(theta,images,labels,numClasses,...
-                                filterDim,numFilters,poolDim,pred)
+    filterDim,numFilters,poolDim,pred)
 % Calcualte cost and gradient for a single layer convolutional
 % neural network followed by a softmax layer with cross entropy
 % objective.
-%                            
+%
 % Parameters:
 %  theta      -  unrolled parameter vector
 %  images     -  stores images in imageDim x imageDim x numImges
 %                array
 %  numClasses -  number of classes to predict
-%  filterDim  -  dimension of convolutional filter                            
+%  filterDim  -  dimension of convolutional filter
 %  numFilters -  number of convolutional filters
 %  poolDim    -  dimension of pooling area
 %  pred       -  boolean only forward propagate and return
@@ -20,7 +20,6 @@ function [cost, grad, preds] = cnnCost(theta,images,labels,numClasses,...
 %  cost       -  cross entropy cost
 %  grad       -  gradient with respect to theta (if pred==False)
 %  preds      -  list of predictions for each example (if pred==True)
-
 
 if ~exist('pred','var')
     pred = false;
@@ -39,7 +38,7 @@ numImages = size(images,3); % number of images
 % is the number of output units from the convolutional layer
 % bd is corresponding bias
 [Wc, Wd, bc, bd] = cnnParamsToStack(theta,imageDim,filterDim,numFilters,...
-                        poolDim,numClasses);
+    poolDim,numClasses);
 
 % Same sizes as Wc,Wd,bc,bd. Used to hold gradient w.r.t above params.
 Wc_grad = zeros(size(Wc));
@@ -56,7 +55,7 @@ bd_grad = zeros(size(bd));
 
 %% Convolutional Layer
 %  For each image and each filter, convolve the image with the filter, add
-%  the bias and apply the sigmoid nonlinearity.  Then subsample the 
+%  the bias and apply the sigmoid nonlinearity.  Then subsample the
 %  convolved activations with mean pooling.  Store the results of the
 %  convolution in activations and the results of the pooling in
 %  activationsPooled.  You will need to save the convolved activations for
@@ -65,11 +64,11 @@ convDim = imageDim-filterDim+1; % dimension of convolved output
 outputDim = (convDim)/poolDim; % dimension of subsampled output
 
 % convDim x convDim x numFilters x numImages tensor for storing activations
-activations = zeros(convDim,convDim,numFilters,numImages);
+activations = cnnConvolve(filterDim, numFilters, images, Wc, bc);
 
 % outputDim x outputDim x numFilters x numImages tensor for storing
 % subsampled activations
-activationsPooled = zeros(outputDim,outputDim,numFilters,numImages);
+activationsPooled = cnnPool(poolDim, activations);
 
 %%% YOUR CODE HERE %%%
 
@@ -85,8 +84,9 @@ activationsPooled = reshape(activationsPooled,[],numImages);
 
 % numClasses x numImages for storing probability that each image belongs to
 % each class.
-probs = zeros(numClasses,numImages);
-
+temp = bsxfun(@plus, Wd * activationsPooled, bd);
+M = exp(bsxfun(@minus,temp,max(temp,[],1)));
+probs = bsxfun(@rdivide, M, sum(M)); % numClasses x numImages
 %%% YOUR CODE HERE %%%
 
 %%======================================================================
@@ -95,8 +95,18 @@ probs = zeros(numClasses,numImages);
 %  calculate above to evaluate the cross entropy objective.  Store your
 %  results in cost.
 
-cost = 0; % save objective into cost
-
+% save objective into cost
+% weightDecay = 1e-3;
+% use_weight_decay = 1;
+m = length(labels);
+groundTruth = full(sparse(labels,1:m,1));
+cost = -sum(sum(groundTruth.*log(probs)));
+% if use_weight_decay
+%     weightDecayCost = .5 * weightDecay * (sum(Wd(:) .^ 2) + sum(Wc(:) .^ 2));
+% else
+%     weightDecayCost = 0;
+% end
+% cost = cost / numImages + weightDecayCost;
 %%% YOUR CODE HERE %%%
 
 % Makes predictions given probs and returns without backproagating errors.
@@ -113,9 +123,34 @@ end;
 %  layers.  Store the errors for the next step to calculate the gradient.
 %  Backpropagating the error w.r.t the softmax layer is as usual.  To
 %  backpropagate through the pooling layer, you will need to upsample the
-%  error with respect to the pooling layer for each filter and each image.  
-%  Use the kron function and a matrix of ones to do this upsampling 
+%  error with respect to the pooling layer for each filter and each image.
+%  Use the kron function and a matrix of ones to do this upsampling
 %  quickly.
+
+% Backpropagate through the softmax layer
+delta_outlayer = -(groundTruth - probs);  % numClasses x numImages
+
+% Backpropagate through the mean pooling layer
+delta_pool = Wd' * delta_outlayer;
+delta_pool = reshape(delta_pool, outputDim, outputDim, numFilters, numImages);
+unpoolingFilter = ones(poolDim)/(poolDim^2);
+errorsPooling = zeros(convDim, convDim, numFilters, numImages);
+for imageNum = 1:numImages
+   for filterNum = 1:numFilters
+       e = delta_pool(:, :, filterNum, imageNum);
+       errorsPooling(:, :, filterNum, imageNum) = kron(e, unpoolingFilter);
+   end
+end
+delta_pool = errorsPooling;
+
+% Backpropagate through the convulutional layer
+activationType = 'sigmoid';
+switch activationType
+    case 'relu'
+        delta_conv = delta_pool .* (activations > 0); % relu derivative = x > 1
+    case 'sigmoid'
+        delta_conv = delta_pool .* activations .* (1 - activations); % sigmoid derivative = x .* (1 - x)
+end
 
 %%% YOUR CODE HERE %%%
 
@@ -126,6 +161,42 @@ end;
 %  softmax layer is calculated as usual.  To calculate the gradient w.r.t.
 %  a filter in the convolutional layer, convolve the backpropagated error
 %  for that filter with each image and aggregate over images.
+
+% Gradient of the softmax layer
+Wd_grad = delta_outlayer * activationsPooled';
+% if use_weight_decay
+%     Wd_grad = Wd_grad + weightDecay * Wd;
+% end
+bd_grad = sum(delta_outlayer, 2);
+
+% Gradient of the convolutional layer
+bc_grad = zeros(size(bc));
+Wc_grad = zeros(size(Wc));
+
+for filterNum = 1 : numFilters
+    temp = delta_conv(:, :, filterNum, :);
+    bc_grad(filterNum) = sum(temp(:));
+end
+
+for filterNum = 1 : numFilters
+    for imageNum = 1 : numImages
+        e = delta_conv(:, :, filterNum, imageNum);
+        delta_conv(:, :, filterNum, imageNum) = rot90(e, 2);
+    end
+end
+
+for filterNum = 1 : numFilters
+    Wc_gradFilter = zeros(size(Wc_grad, 1), size(Wc_grad, 2));
+    for imageNum = 1 : numImages       
+        Wc_gradFilter = Wc_gradFilter + conv2(images(:, :, imageNum),...
+            delta_conv(:, :, filterNum, imageNum), 'valid');
+    end
+    Wc_grad(:, :, filterNum) = Wc_gradFilter;
+end
+% if use_weight_decay
+%     Wc_grad = Wc_grad + weightDecay * Wc;
+% end
+
 
 %%% YOUR CODE HERE %%%
 

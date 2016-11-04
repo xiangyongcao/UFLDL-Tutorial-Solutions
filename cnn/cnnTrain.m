@@ -39,7 +39,7 @@ theta = cnnInitParams(imageDim,filterDim,numFilters,poolDim,numClasses);
 %  calculation for your cnnCost.m function.  You may need to add the
 %  appropriate path or copy the file to this directory.
 
-DEBUG=false;  % set this to true to check gradient
+DEBUG = 0;  % set this to true to check gradient
 if DEBUG
     % To speed up gradient checking, we will use a reduced network and
     % a debugging data set
@@ -80,7 +80,7 @@ end;
 options.epochs = 3;
 options.minibatch = 256;
 options.alpha = 1e-1;
-options.momentum = .95;
+% options.momentum = 0.90;
 
 opttheta = minFuncSGD(@(x,y,z) cnnCost(x,y,z,numClasses,filterDim,...
                       numFilters,poolDim),theta,images,labels,options);
