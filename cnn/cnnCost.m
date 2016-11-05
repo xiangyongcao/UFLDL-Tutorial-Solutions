@@ -25,6 +25,8 @@ if ~exist('pred','var')
     pred = false;
 end;
 
+activationType = 'sigmoid';
+% activationType = 'relu';
 
 imageDim = size(images,1); % height/width of image
 numImages = size(images,3); % number of images
@@ -41,10 +43,10 @@ numImages = size(images,3); % number of images
     poolDim,numClasses);
 
 % Same sizes as Wc,Wd,bc,bd. Used to hold gradient w.r.t above params.
-Wc_grad = zeros(size(Wc));
-Wd_grad = zeros(size(Wd));
-bc_grad = zeros(size(bc));
-bd_grad = zeros(size(bd));
+% Wc_grad = zeros(size(Wc));
+% Wd_grad = zeros(size(Wd));
+% bc_grad = zeros(size(bc));
+% bd_grad = zeros(size(bd));
 
 %%======================================================================
 %% STEP 1a: Forward Propagation
@@ -64,7 +66,7 @@ convDim = imageDim-filterDim+1; % dimension of convolved output
 outputDim = (convDim)/poolDim; % dimension of subsampled output
 
 % convDim x convDim x numFilters x numImages tensor for storing activations
-activations = cnnConvolve(filterDim, numFilters, images, Wc, bc);
+activations = cnnConvolve(filterDim, numFilters, images, Wc, bc, activationType);
 
 % outputDim x outputDim x numFilters x numImages tensor for storing
 % subsampled activations
@@ -96,17 +98,18 @@ probs = bsxfun(@rdivide, M, sum(M)); % numClasses x numImages
 %  results in cost.
 
 % save objective into cost
-% weightDecay = 1e-3;
-% use_weight_decay = 1;
+weightDecay = 1e-3;
+use_weight_decay = 1;
 m = length(labels);
 groundTruth = full(sparse(labels,1:m,1));
 cost = -sum(sum(groundTruth.*log(probs)));
-% if use_weight_decay
-%     weightDecayCost = .5 * weightDecay * (sum(Wd(:) .^ 2) + sum(Wc(:) .^ 2));
-% else
-%     weightDecayCost = 0;
-% end
-% cost = cost / numImages + weightDecayCost;
+if use_weight_decay
+    weightDecayCost = .5 * weightDecay * (sum(Wd(:) .^ 2) + sum(Wc(:) .^ 2));
+else
+    weightDecayCost = 0;
+end
+cost = cost / numImages + weightDecayCost;
+
 %%% YOUR CODE HERE %%%
 
 % Makes predictions given probs and returns without backproagating errors.
@@ -128,10 +131,11 @@ end;
 %  quickly.
 
 % Backpropagate through the softmax layer
-delta_outlayer = -(groundTruth - probs);  % numClasses x numImages
+delta_softmax = probs - groundTruth ;  % numClasses x numImages
+delta_softmax = delta_softmax / numImages;
 
 % Backpropagate through the mean pooling layer
-delta_pool = Wd' * delta_outlayer;
+delta_pool = Wd' * delta_softmax;
 delta_pool = reshape(delta_pool, outputDim, outputDim, numFilters, numImages);
 unpoolingFilter = ones(poolDim)/(poolDim^2);
 errorsPooling = zeros(convDim, convDim, numFilters, numImages);
@@ -144,7 +148,6 @@ end
 delta_pool = errorsPooling;
 
 % Backpropagate through the convulutional layer
-activationType = 'sigmoid';
 switch activationType
     case 'relu'
         delta_conv = delta_pool .* (activations > 0); % relu derivative = x > 1
@@ -163,11 +166,11 @@ end
 %  for that filter with each image and aggregate over images.
 
 % Gradient of the softmax layer
-Wd_grad = delta_outlayer * activationsPooled';
-% if use_weight_decay
-%     Wd_grad = Wd_grad + weightDecay * Wd;
-% end
-bd_grad = sum(delta_outlayer, 2);
+Wd_grad = delta_softmax * activationsPooled';
+if use_weight_decay
+    Wd_grad = Wd_grad + weightDecay * Wd;
+end
+bd_grad = sum(delta_softmax, 2);
 
 % Gradient of the convolutional layer
 bc_grad = zeros(size(bc));
@@ -193,9 +196,9 @@ for filterNum = 1 : numFilters
     end
     Wc_grad(:, :, filterNum) = Wc_gradFilter;
 end
-% if use_weight_decay
-%     Wc_grad = Wc_grad + weightDecay * Wc;
-% end
+if use_weight_decay
+    Wc_grad = Wc_grad + weightDecay * Wc;
+end
 
 
 %%% YOUR CODE HERE %%%

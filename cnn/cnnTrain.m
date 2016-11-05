@@ -20,7 +20,8 @@ numFilters = 20;   % Number of filters for conv layer
 poolDim = 2;      % Pooling dimension, (should divide imageDim-filterDim+1)
 
 % Load MNIST Train
-addpath ../common/;
+addpath ../common;
+addpath(genpath('../common/minFunc_2012/minFunc'));
 images = loadMNISTImages('../common/train-images-idx3-ubyte');
 images = reshape(images,imageDim,imageDim,[]);
 labels = loadMNISTLabels('../common/train-labels-idx1-ubyte');
@@ -39,7 +40,7 @@ theta = cnnInitParams(imageDim,filterDim,numFilters,poolDim,numClasses);
 %  calculation for your cnnCost.m function.  You may need to add the
 %  appropriate path or copy the file to this directory.
 
-DEBUG = 0;  % set this to true to check gradient
+DEBUG = 1;  % set this to true to check gradient
 if DEBUG
     % To speed up gradient checking, we will use a reduced network and
     % a debugging data set
@@ -76,11 +77,10 @@ end;
 %%======================================================================
 %% STEP 3: Learn Parameters
 %  Implement minFuncSGD.m, then train the model.
-
 options.epochs = 3;
 options.minibatch = 256;
 options.alpha = 1e-1;
-% options.momentum = 0.90;
+options.momentum = 0.95;
 
 opttheta = minFuncSGD(@(x,y,z) cnnCost(x,y,z,numClasses,filterDim,...
                       numFilters,poolDim),theta,images,labels,options);

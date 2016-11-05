@@ -1,4 +1,5 @@
-function convolvedFeatures = cnnConvolve(filterDim, numFilters, images, W, b)
+function convolvedFeatures = cnnConvolve(filterDim, numFilters, images,...
+    W, b, activationType)
 %cnnConvolve Returns the convolution of the features given by W and b with
 %the given images
 %
@@ -22,29 +23,34 @@ convDim = imageDim - filterDim + 1;
 convolvedFeatures = zeros(convDim, convDim, numFilters, numImages);
 
 % Instructions:
-%   Convolve every filter with every image here to produce the 
+%   Convolve every filter with every image here to produce the
 %   (imageDim - filterDim + 1) x (imageDim - filterDim + 1) x numFeatures x numImages
-%   matrix convolvedFeatures, such that 
+%   matrix convolvedFeatures, such that
 %   convolvedFeatures(imageRow, imageCol, featureNum, imageNum) is the
 %   value of the convolved featureNum feature for the imageNum image over
 %   the region (imageRow, imageCol) to (imageRow + filterDim - 1, imageCol + filterDim - 1)
 %
-% Expected running times: 
-%   Convolving with 100 images should take less than 30 seconds 
+% Expected running times:
+%   Convolving with 100 images should take less than 30 seconds
 %   Convolving with 5000 images should take around 2 minutes
 %   (So to save time when testing, you should convolve with less images, as
 %   described earlier)
 
 
 for imageNum = 1:numImages
-  for filterNum = 1:numFilters
-    im = squeeze(images(:, :, imageNum));      
-    filter = W(:,:,filterNum);
-    filter = rot90(squeeze(filter),2);
-    convolvedFeature = conv2(im,filter,'valid');
-    convolvedFeature = sigmoid(convolvedFeature + b(filterNum));    
-    convolvedFeatures(:, :, filterNum, imageNum) = convolvedFeature;
-  end
+    for filterNum = 1:numFilters
+        im = squeeze(images(:, :, imageNum));
+        filter = W(:,:,filterNum);
+        filter = rot90(squeeze(filter),2);
+        convolvedFeature = conv2(im,filter,'valid');
+        switch activationType
+            case 'sigmoid'
+                convolvedFeature = sigmoid(convolvedFeature + b(filterNum));
+            case 'relu'
+                convolvedFeature = max(convolvedFeature + b(filterNum),0);
+        end
+        convolvedFeatures(:, :, filterNum, imageNum) = convolvedFeature;
+    end
 end
 
 
