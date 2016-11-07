@@ -42,6 +42,45 @@ randTheta = randn(params.numFeatures,params.n)*0.01; % 1/sqrt(params.n);
 randTheta = randTheta ./ repmat(sqrt(sum(randTheta.^2,2)), 1, size(randTheta,2));
 randTheta = randTheta(:);
 
+%% Gradient Checking
+DEBUG = 1;  % set this to true to check gradient
+if DEBUG
+    
+    paramsGC.m=200; % num patches
+    paramsGC.patchWidth=4; % width of a patch
+    paramsGC.n=paramsGC.patchWidth^2; % dimensionality of input to RICA
+    paramsGC.lambda = 0.0005; % sparsity cost
+    paramsGC.numFeatures = 10; % number of filter banks to learn
+    paramsGC.epsilon = 1e-2; % epsilon to use in square-sqrt nonlinearity
+    
+    patches = samplePatches(data,paramsGC.patchWidth,paramsGC.m);
+    patches = zca2(patches);
+    m = sqrt(sum(patches.^2) + (1e-8));
+    xGC = bsxfunwrap(@rdivide,patches,m);
+    
+    % initialize with random weights
+    Theta0 = randn(paramsGC.numFeatures,paramsGC.n)*0.01; % 1/sqrt(params.n);
+    Theta0 = Theta0 ./ repmat(sqrt(sum(Theta0.^2,2)), 1, size(Theta0,2));
+    Theta0 = Theta0(:);
+    
+    [cost,grad] = softICACost(Theta0, xGC, paramsGC);
+    
+    % Check gradients
+    numGrad = computeNumericalGradient( @(theta) softICACost(theta, xGC, paramsGC), Theta0);
+    
+    % Use this to visually compare the gradients side by side
+    disp([numGrad grad]);
+    
+    diff = norm(numGrad-grad)/norm(numGrad+grad);
+    % Should be small. In our implementation, these values are usually
+    % less than 1e-9.
+    disp(diff);
+    
+    assert(diff < 1e-6,...
+        'Difference too large. Check your gradient computation again');
+    
+end;
+
 % optimize
 [opttheta, cost, exitflag] = minFunc( @(theta) softICACost(theta, x, params), randTheta, options); % Use x or xw
 

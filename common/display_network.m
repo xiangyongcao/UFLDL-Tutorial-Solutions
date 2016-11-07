@@ -32,7 +32,7 @@ if opt_graycolor, colormap(gray); end
 
 % compute rows, cols
 [L M]=size(A);
-sz=sqrt(L);
+sz=ceil(sqrt(L));
 buf=1;
 if ~exist('cols', 'var')
     if floor(sqrt(M))^2 ~= M

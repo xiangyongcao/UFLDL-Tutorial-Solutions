@@ -4,7 +4,7 @@
 %  x will be a 784 * 600000 matrix, where the kth column x(:, k) corresponds to
 %  the raw image data from the kth 12x12 image patch sampled.
 %  You do not need to change the code below.
-
+clc;clear;
 addpath(genpath('../common'))
 x = loadMNISTImages('../common/train-images-idx3-ubyte');
 figure('name','Raw images');
@@ -12,16 +12,18 @@ randsel = randi(size(x,2),200,1); % A random selection of samples for visualizat
 display_network(x(:,randsel));
 
 %%================================================================
-%% Step 0b: Zero-mean the data (by row)
+%% Step 0b: Zero-mean the data (by row) % £¨by column£©
 %  You can make use of the mean and repmat/bsxfun functions.
-
+x = bsxfun(@minus,x,mean(x,1));
 %%% YOUR CODE HERE %%%
 
 %%================================================================
 %% Step 1a: Implement PCA to obtain xRot
 %  Implement PCA to obtain xRot, the matrix in which the data is expressed
 %  with respect to the eigenbasis of sigma, which is the matrix U.
-
+sigma = x * x' / (size(x,2));
+[U, S, V] = svd(sigma);
+xRot = U' * x;
 %%% YOUR CODE HERE %%%
 
 %%================================================================
@@ -34,7 +36,8 @@ display_network(x(:,randsel));
 %  diagonal (non-zero entries) against a blue background (zero entries).
 
 %%% YOUR CODE HERE %%%
-
+xRot = bsxfun(@minus,xRot,mean(xRot,1));
+covar = xRot * xRot' / size(xRot, 2);
 % Visualise the covariance matrix. You should see a line across the
 % diagonal against a blue background.
 figure('name','Visualisation of covariance matrix');
@@ -44,6 +47,15 @@ imagesc(covar);
 %% Step 2: Find k, the number of components to retain
 %  Write code to determine k, the number of components to retain in order
 %  to retain at least 99% of the variance.
+diagS = diag(S);
+r = nnz(diagS);
+for k = 1:r
+   var_retain = sum(diagS(1:k))/sum(diagS(1:r));
+   if var_retain>=0.99
+       break;
+   end 
+end
+disp(['The number of components to retain is ',num2str(k)]);
 
 %%% YOUR CODE HERE %%%
 
@@ -61,6 +73,7 @@ imagesc(covar);
 %  there is little loss due to throwing away the principal components that
 %  correspond to dimensions with low variation.
 
+xHat = U(:,1:k) * xRot(1:k,:);
 %%% YOUR CODE HERE %%%
 
 % Visualise the data, and compare it to the raw data
@@ -78,7 +91,8 @@ display_network(x(:,randsel));
 %  Implement PCA with whitening and regularisation to produce the matrix
 %  xPCAWhite. 
 
-epsilon = 1e-1; 
+epsilon = 1e-4; 
+xPCAWhite = diag(1./sqrt(diagS(1:k) + epsilon)) * U(:,1:k)' * x;
 %%% YOUR CODE HERE %%%
 
 %% Step 4b: Check your implementation of PCA whitening 
@@ -97,7 +111,7 @@ epsilon = 1e-1;
 %  becoming smaller.
 
 %%% YOUR CODE HERE %%%
-
+covar = xPCAWhite * xPCAWhite' / size(xPCAWhite, 2);
 % Visualise the covariance matrix. You should see a red line across the
 % diagonal against a blue background.
 figure('name','Visualisation of covariance matrix');
@@ -110,7 +124,7 @@ imagesc(covar);
 %  that whitening results in, among other things, enhanced edges.
 
 %%% YOUR CODE HERE %%%
-
+xZCAWhite = U(:, 1:k) * xPCAWhite;
 % Visualise the data, and compare it to the raw data.
 % You should observe that the whitened images have enhanced edges.
 figure('name','ZCA whitened images');
